@@ -1,0 +1,311 @@
+---
+title: "LTFA Dashboard"
+output:
+  flexdashboard::flex_dashboard:
+    self_contained: true
+    orientation: columns
+    vertical_layout: fill
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(pacman)
+library(here)
+p_load(haven, dplyr, tidyr, ggplot2, plotly, DT, stringr, htmltools)
+```
+### Dashboard Information:
+<div style="font-size: 14px; background-color: #f9f9f9; padding: 10px; border-top: 1px solid #ccc;">
+In my ILE project I am trying to use latent trajectory factor analysis (LTFA) to infer from cognitive test performances the longitudinal change of cognitive ability among Alzheimer's Disease patients, as well as its relationship between those cognitive test performances. 
+
+This dashboard summarizes the Health Brain Study data that I use and model outcomes from my longitudinal cognitive change inference. It includes exploratory visualizations for missingness of longitudinal visits of the dataset, summarize of  longitudinal trends by visits for cognitive tests, and finally, the estimated Cognitive ability's relationship with cognitive test performance.
+
+Github link:https://github.com/Michael89757/DATA_555_Dashboard 
+
+### Project Impact:
+
+<div style="font-size: 14px; background-color: #f9f9f9; padding: 10px; border-top: 1px solid #ccc;">
+<strong>Impact:</strong> This dashboard helps understand the Emory Health Barin Study data with a interactive way, and it also visualize longitudinal cognitive trajectories and its connection with cognitive tests performances, can help to identify patterns that may indicate early neurodegenerative changes and testify efficiency of cognitive tests in pre-clinical measurements.
+
+
+</div>
+
+-----------------------------------------------------------------------
+
+```{r data import, include=FALSE, warning=FALSE,message=FALSE}
+EHBS <- read_sas("cognitive_updated.sas7bdat")
+# Education Cleaning
+EHBS <- EHBS %>% mutate(Education = case_when(
+  Education %in% c("20 - Doctorate", "20 - Doctorate, Law De") ~ "20 - Doctorate",
+  Education == "18 - Master's degree" ~ "18 - Master's degree",
+  Education == "14 - Associate degree" ~ "14 - Associate degree",
+  Education == "16 - College graduate" ~ "16 - College graduate",
+  Education == "12 - HS graduate (GED)" ~ "12 - HS graduate (GED)",
+  Education == "17" ~ "17 - College graduate",
+  Education == "13" ~ "13 - 1 year of college",
+  Education == "13 - 1 year of college" ~ "13 - 1 year of college",
+  Education == "" ~ NA_character_,
+  TRUE ~ Education
+))
+
+EHBS_table <- EHBS %>%
+  select(-Record_ID,,-visit_interval_days,-visit_interval_years,)%>%
+  select(GUID=GUID,
+         `Event Name`=Event_Name,
+         `Visit Date`=Visit_date,
+         `Primary Race`=primary_race,
+         `Ethnicity`=Ethnicity,
+         `Education`=Education,
+         `Gender`=gender,
+         `RAVLT A6 Total Correct`=RAVLT_A6,
+         `RAVLT A7 Total Correct`=RAVLT_A7,
+         `Number Span Forward Longest Span Correct`=numspanfed,
+         `Number Span Backward Longest Span Correct`=numspanback,
+         `JOLO Number Correct`=JOLO,
+         `SDMT Total Correct`=SDMT,
+         `Verbal Fluency Number of correct F-words generated in 60 seconds `=Verbal_fluency_F,
+         `Verbal Fluency Number of correct L-words generated in 60 seconds `=Verbal_fluency_L,
+         `Category Fluency Total Animals`=Category_Fluency_Total,
+         `MiNT Total Correct`=MiNT,
+         `Rey Complex Figure Test and Recognition Trial (immediate recall)`=RCFT_Immediate_Recall,
+         `Rey Complex Figure Test and Recognition Trial (Delayed recall)`=RCFT_Delayed_Recall,
+         `Trail Making Test (Part A)`=Trails_A,
+         `Trail Making Test (Part B)`=Trails_B
+  )
+```
+
+
+# Dataset Description 
+
+The dataset used in this analysis originates from the **Emory Health Brain Study (EHBS)**. It is a sub-study within the Emory Healthy Aging Study (EHAS), which is an observational study designed to advance the understanding of healthy aging and the development of agerelated diseases through well-defined, community-based prospective cohorts.The derived dataset, cleaned collaboratively, contains individual-level identifiers (GUID), record IDs for each visit, visit event names, demographic information of the participants, and their performance on various cognitive tests across visits.EHBS specifically recruits up to 2,500 EHAS participants aged 50 to 75 who have no diagnosis of AD.
+
+The following table lists the names of cognitive tests and their corresponding meanings:
+
+```{r, echo=FALSE, warning=FALSE}
+library(knitr)
+library(kableExtra)
+
+cog_table <- data.frame(
+  `Cognitive Test Name` = c(
+    "RAVLT A6", "RAVLT A7", "JOLO", "MiNT", "SDMT",
+    "NumSpanBack", "NumSpanFwd", "Trails_A", "Trails_B",
+    "Verbal Fluency F", "Verbal Fluency L",
+    "RCFT_Immediate", "RCFT_Delayed", "Category Total"
+  ),
+  Meaning = c(
+    "Rey Auditory Verbal Learning Test A6 Total Correct (Immediate Recall)",
+    "Rey Auditory Verbal Learning Test A7 Total Correct (Delayed Recall)",
+    "Judgment of Line Orientation Total Number Correct",
+    "The Multilingual Naming Test Total Correct (sum of uncued + semantic cue, max = 32)",
+    "Symbol Digit Modalities Test Total Correct",
+    "Number Span Backward Test: Longest Span Correct",
+    "Number Span Forward Test: Longest Span Correct",
+    "Trail Making Test (Part A)",
+    "Trail Making Test (Part B)",
+    "Verbal Fluency - Number of F-words generated in 60 seconds",
+    "Verbal Fluency - Number of L-words generated in 60 seconds",
+    "Rey Complex Figure Test (Immediate Recall)",
+    "Rey Complex Figure Test (Delayed Recall)",
+    "Category Fluency - Total Animals"
+  )
+)
+
+kable(cog_table, "html", caption = "Cognitive Test Names and Corresponding Meanings") %>%
+  kable_styling(full_width = FALSE, position = "center", bootstrap_options = c("striped", "hover"))
+
+```
+
+# Widget 1: Summary of Cognitive Test Observations by Each Visit
+
+Column {data-width=70%}
+-----------------------------------------------------------------------
+
+```{r}
+total_guid <- EHBS_table %>% pull(GUID) %>% unique() %>% length()
+EHBS_selected <- EHBS_table %>% select(GUID, `Event Name`, everything(), -`Primary Race`, -Ethnicity, -Education, -Gender)
+cognitive_tests <- colnames(EHBS_selected)[4:ncol(EHBS_selected)]
+EHBS_long <- EHBS_selected %>%
+  pivot_longer(cols = all_of(cognitive_tests), names_to = "Cognitive Test", values_to = "Score") %>%
+  drop_na(Score) %>% 
+  count(`Event Name`, `Cognitive Test`) 
+
+p <- ggplot(EHBS_long, aes(x = str_wrap(`Cognitive Test`, width = 20), y = n, fill = `Event Name`)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(limits = c(0, total_guid)) +
+  coord_flip() +
+  labs(title = "Cognitive Test Count by Event Name",
+       x = "Cognitive Test",
+       y = "Count",
+       fill = "Event Name") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+htmltools::div(style = "height: 800px; overflow-y: scroll;",
+  ggplotly(p, height = 1300, width = 1000)
+)
+```
+
+Column {data-width=30%}
+-----------------------------------------------------------------------
+
+```{r}
+htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
+  HTML("
+        This plot illustrates record availability per visit for each cognitive test and provides a visualization of drop out status.
+    <h4><b>Key Takeaways:</b></h4>
+    <ul>
+      <li><b>SDMT</b> and <b>Verbal Fluency L</b> have notably fewer records at enrollment stage hence is excluded from out model. Consider excluding sparse tests from the final model to reduce noise.</li>
+      </li> There is significant amout of drop out after Baseline visit.
+      <li>Use this summary to guide which cognitive measures are well-represented longitudinally.</li>
+    </ul>
+  ")
+)
+
+```
+
+
+
+
+# Widget 2: Standardized Cognitive Scores by Visit
+Column {data-width=70%}
+-----------------------------------------------------------------------
+```{r}
+library(stringr)
+
+EHBS_z <- EHBS_table %>%
+  select(-GUID, -`Primary Race`, -Ethnicity, -Education, -Gender) %>%
+  mutate(across(where(is.numeric), ~ scale(.)[, 1], .names = "z_{.col}"))
+
+EHBS_z_long <- EHBS_z %>%
+  pivot_longer(cols = starts_with("z_"), names_to = "Test", values_to = "Z") %>%
+  mutate(Test = str_replace(Test, "z_", ""))
+
+p <- ggplot(EHBS_z_long, aes(x = `Event Name`, y = Z, fill = Test)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5, position = position_dodge(width = 0.75)) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 25)) +
+  coord_cartesian(ylim = c(-5, 5)) +
+  labs(title = "Standardized Test Score Distribution by Visit",
+       x = "Visit Event",
+       y = "Standardized Z-Score",
+       fill = "Cognitive Test") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1,size = 9),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 9),
+    plot.title = element_text(face = "bold")
+  ) +
+  guides(fill = guide_legend(ncol = 3))
+
+ggplotly(p, width = 1200, height = 800)
+
+```
+
+Column {data-width=30%}
+-----------------------------------------------------------------------
+
+```{r}
+htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
+  HTML("
+        This plot illustrates distribution of cognitive test perfromances across each visits to visualize test performance longitudinal change. By clicking on the cognitive test on legends user can filter test to be presented
+    <h4><b>Key Takeaways:</b></h4>
+    <ul>
+      <li>Most scores seemingly have a steady distribution for medians with slightly decrease after visit 3<li>
+      <li>The spread varies for different visit, probably due to variant sample size for each visit.<li>
+      <li>The outliers are evident for most of the tests indicating significant difference among patient test performacnes.<li>
+    </ul>
+  ")
+)
+
+```
+
+# Widget 3: LTFA Model-Implied Cognitive Test Scores
+Column {data-width=70%}
+-----------------------------------------------------------------------
+
+```{r}
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(tidyr)
+robust_wt_sas <- read.csv("D:/me/Emory/Projects/thesis/ltfa_xinyu_folder/ltfa_xinyu/results_ltfa/9_params/robust_wt.csv")
+param <- read.csv("D:/me/Emory/Projects/thesis/ltfa_xinyu_folder/ltfa_xinyu/results_ltfa/9_params/param.csv")
+
+#Latent Trait
+factor <- seq(-3, 3, by = 0.5)
+year <- c(0, 3, 5, 7)
+num.time <- length(year)
+num.fac <- length(factor)
+
+
+cognitive_tests <- c("JOLO Number Correct", "RAVLT A6 Total Correct", "RAVLT A7 Total Correct", "Number Span backwards", "Trail Making Test (Part A)", "Trail Making Test (Part B)", "Verbal Fluency Number of \n correct F-words generated in 60 seconds","RCFT (immediate recall)", "Category Fluency Total Animals")
+
+df_list <- list()
+for (i in seq_along(cognitive_tests)) {
+  test_name <- cognitive_tests[i]
+  start.indx <- 4 + (i - 1) * 4 
+
+  intcept <- param[start.indx, 3]
+  slope <- param[start.indx + 1, 3]
+  loading <- -param[start.indx + 2, 3]
+  loadslope <- -param[start.indx + 3, 3]
+
+  feat <- matrix(rep(0, num.fac * num.time), nrow = num.fac, ncol = num.time)
+  
+  for (k in 1:num.time) {
+    feat[, k] <- intcept + slope * year[k] + loading * factor + loadslope * year[k] * factor
+  }
+
+  df_temp <- as.data.frame(feat)
+  colnames(df_temp) <- paste0("Visit_", seq_along(year))
+  df_temp <- cbind(Cognitive_Ability = factor, df_temp)
+  
+  df_long <- df_temp %>%
+    pivot_longer(cols = starts_with("Visit_"), names_to = "Event_Name", values_to = "Score") %>%
+    mutate(Test = test_name)
+  
+  df_list[[i]] <- df_long
+}
+
+df_combined <- bind_rows(df_list)
+
+p <- ggplot(df_combined, aes(x = Cognitive_Ability, y = Score, color = Event_Name, group = interaction(Test, Event_Name))) +
+  geom_line(alpha = 0.5, size = 1) + 
+  facet_wrap(~ Test, scales = "free_y") + 
+  labs(title = "Cognitive Test Scores Across Cognitive Ability",
+       x = "Cognitive Ability (Latent Trait)",
+       y = "Test Scores",
+       color = "Event Name") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  theme_minimal()
+
+ggplotly(p) %>% 
+  layout(autosize = TRUE, width = 1200)
+
+
+```
+Column {data-width=30%}
+-----------------------------------------------------------------------
+
+```{r}
+htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
+  HTML(" This plot illustrates the distribution of cognitive test across estimated latent factor (cognitive ability).
+      By clicking on the Event Name user can see the distribution of cognitive test scores across different cognitive ability for each visit.
+    <h4><b>Key Takeaways:</b></h4>
+    <ul>
+
+      <li><b>RAVLT A6 & A7 Total Correct</b>, <b>RCFT(Immediate Recall)</b> and <b>Category Fluency Total Animals</b> have clear distinguishing between low and high cognitive ability in performances indicated by its slope and the distinguishing is evident with the passage of time.</li>
+      <li>All cognitive tests seems have a overall better performance each time (higher intersection) indicating possible practice effects.</li>
+      <li>Users can use this output to guide justification and selection of cognitive tests.</li>
+    </ul>
+  ")
+)
+
+```
+
+
+
+
+
+
+
