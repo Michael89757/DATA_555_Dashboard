@@ -2,33 +2,33 @@
 title: "LTFA Dashboard"
 output:
   flexdashboard::flex_dashboard:
-    self_contained: true
+    vertical_layout: scroll
     orientation: columns
-    vertical_layout: fill
+    self_contained: true
+    theme: cosmo
 ---
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(pacman)
 library(here)
 p_load(haven, dplyr, tidyr, ggplot2, plotly, DT, stringr, htmltools)
 ```
-### Dashboard Information:
+
 <div style="font-size: 14px; background-color: #f9f9f9; padding: 10px; border-top: 1px solid #ccc;">
-In my ILE project I am trying to use latent trajectory factor analysis (LTFA) to infer from cognitive test performances the longitudinal change of cognitive ability among Alzheimer's Disease patients, as well as its relationship between those cognitive test performances. 
+
+<strong> Dashboard Information:</strong>In my ILE project I am trying to use latent trajectory factor analysis (LTFA) to infer from cognitive test performances the longitudinal change of cognitive ability among Alzheimer's Disease patients, as well as its relationship between those cognitive test performances. 
 
 This dashboard summarizes the Health Brain Study data that I use and model outcomes from my longitudinal cognitive change inference. It includes exploratory visualizations for missingness of longitudinal visits of the dataset, summarize of  longitudinal trends by visits for cognitive tests, and finally, the estimated Cognitive ability's relationship with cognitive test performance.
 
 Github link:https://github.com/Michael89757/DATA_555_Dashboard 
-
-### Project Impact:
+</div> 
 
 <div style="font-size: 14px; background-color: #f9f9f9; padding: 10px; border-top: 1px solid #ccc;">
-<strong>Impact:</strong> This dashboard helps understand the Emory Health Barin Study data with a interactive way, and it also visualize longitudinal cognitive trajectories and its connection with cognitive tests performances, can help to identify patterns that may indicate early neurodegenerative changes and testify efficiency of cognitive tests in pre-clinical measurements.
 
+<strong> project Impact:</strong> This dashboard helps understand the Emory Health Barin Study data with a interactive way, and it also visualize longitudinal cognitive trajectories and its connection with cognitive tests performances, can help to identify patterns that may indicate early neurodegenerative changes and testify efficiency of cognitive tests in pre-clinical measurements.
 
 </div>
-
------------------------------------------------------------------------
 
 ```{r data import, include=FALSE, warning=FALSE,message=FALSE}
 EHBS <- read_sas("cognitive_updated.sas7bdat")
@@ -113,6 +113,8 @@ kable(cog_table, "html", caption = "Cognitive Test Names and Corresponding Meani
 
 ```
 
+
+
 # Widget 1: Summary of Cognitive Test Observations by Each Visit
 
 Column {data-width=70%}
@@ -161,10 +163,12 @@ htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
 
 ```
 
+-----------------------------------------------------------------------
 
 
 
 # Widget 2: Standardized Cognitive Scores by Visit
+
 Column {data-width=70%}
 -----------------------------------------------------------------------
 ```{r}
@@ -218,6 +222,9 @@ htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
 )
 
 ```
+
+
+
 
 # Widget 3: LTFA Model-Implied Cognitive Test Scores
 Column {data-width=70%}
@@ -284,6 +291,7 @@ ggplotly(p) %>%
 
 
 ```
+
 Column {data-width=30%}
 -----------------------------------------------------------------------
 
@@ -302,6 +310,7 @@ htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
 )
 
 ```
+
 
 
 
