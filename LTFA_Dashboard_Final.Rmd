@@ -113,9 +113,54 @@ kable(cog_table, "html", caption = "Cognitive Test Names and Corresponding Meani
 
 ```
 
+# Widget : Interactive data table for EHBS datasets.
+
+Column {data-width=70%}
+-----------------------------------------------------------------------
+
+```{r data table,echo=FALSE,warning=FALSE,message=FALSE}
+library(DT)
+library(dplyr)
+# Select relevant columns for the table
+categorical_vars <- c("Event_Name", "primary_race", "Ethnicity","Education","gender")
+
+# Create interactive Data Table
+htmltools::div(style = "overflow-y: auto; height: 1300px; width: 1000px;",
+datatable(EHBS_table, 
+          options = list(
+            pageLength = 10,       # Show 10 rows per page by default
+            autoWidth = TRUE,      # Auto adjust column width
+            searching = TRUE,      # Enable search box
+            dom = 'Blfrtip',       # Show filter dropdowns
+            columnDefs = list(     
+              list(className = 'dt-center', targets = c(3, 4, 5, 6, 7)), # Center-align numeric columns
+              list(orderable = TRUE, targets = '_all')  # Make all columns sortable
+            )
+          ),
+          rownames = FALSE,        # Hide row numbers
+          filter = "top"           # Add column filters
+)
+)
+```
+
+Column {data-width=30%}
+-----------------------------------------------------------------------
+
+```{r}
+htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
+  HTML("
+        This plot illustrates record availability per visit for each cognitive test and provides a visualization of drop out status.
+    <h4><b>Key Takeaways:</b></h4>
+    <ul>
+This widget is developed to be able to have a look at the table and possibly assist me with data filtering. For categorical variables, users can type in the name they would like to select for filtering purpose and for continuous variables users can use the slide bar to select the desired range of the variable they are interested in.
+    </ul>
+  ")
+)
+
+```
 
 
-# Widget 1: Summary of Cognitive Test Observations by Each Visit
+# Widget: Summary of Cognitive Test Observations by Each Visit
 
 Column {data-width=70%}
 -----------------------------------------------------------------------
@@ -167,7 +212,7 @@ htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
 
 
 
-# Widget 2: Standardized Cognitive Scores by Visit
+# Widget : Standardized Cognitive Scores by Visit
 
 Column {data-width=70%}
 -----------------------------------------------------------------------
@@ -201,7 +246,9 @@ p <- ggplot(EHBS_z_long, aes(x = `Event Name`, y = Z, fill = Test)) +
   ) +
   guides(fill = guide_legend(ncol = 3))
 
-ggplotly(p, width = 1200, height = 800)
+htmltools::div(style = "height: 800px; overflow-y: scroll;",
+  ggplotly(p, height = 800, width = 1200)
+)
 
 ```
 
@@ -226,7 +273,8 @@ htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
 
 
 
-# Widget 3: LTFA Model-Implied Cognitive Test Scores
+# Widget: LTFA Model-Implied Cognitive Test Scores
+
 Column {data-width=70%}
 -----------------------------------------------------------------------
 
@@ -286,8 +334,9 @@ p <- ggplot(df_combined, aes(x = Cognitive_Ability, y = Score, color = Event_Nam
   coord_cartesian(ylim = c(-2, 2)) +
   theme_minimal()
 
-ggplotly(p) %>% 
-  layout(autosize = TRUE, width = 1200)
+htmltools::div(style = "height: 800px; overflow-y: scroll;",
+  ggplotly(p, height = 800, width = 1200)
+)
 
 
 ```
@@ -310,7 +359,6 @@ htmltools::div(style = "font-size: 14px; line-height: 1.6; padding: 10px;",
 )
 
 ```
-
 
 
 
