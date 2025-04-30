@@ -1,5 +1,6 @@
 # DATA_555_Dashboard 
 This dashboard summarizes the Health Brain Study data that I use and model outcomes from my longitudinal cognitive change inference.
+Link to the Dashboard can be accessed here: https://michael89757.github.io/DATA_555_Dashboard/
 
 ## Source of Data
 **Emory Health Brain Study**
