@@ -1,4 +1,4 @@
-# DATA_555_Dashboard
+# DATA_555_Dashboard 
 This dashboard summarizes the Health Brain Study data that I use and model outcomes from my longitudinal cognitive change inference.
 
 ## Source of Data
